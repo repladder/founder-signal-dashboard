@@ -12,6 +12,7 @@ export default function Sidebar() {
     { href: '/dashboard', label: 'Dashboard' },
     { href: '/campaigns', label: 'Campaigns' },
     { href: '/prospects', label: 'Prospects' },
+    { href: '/engagers', label: 'Engagers' },
     { href: '/signals', label: 'Signals' },
     { href: '/billing', label: 'Billing' },
     { href: '/settings', label: 'Settings' },
