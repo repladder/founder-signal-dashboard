@@ -69,6 +69,6 @@ export const SIGNAL_TEMPLATES = {
   hiring: ['hiring', 'job opening', 'join our team', 'looking for', 'career'],
   launch: ['launched', 'announcing', 'introducing', 'release', 'available now'],
   expansion: ['expansion', 'new office', 'scaling', 'growing team', 'international'],
-} as const;
+} ;
 
 export type SignalTemplate = keyof typeof SIGNAL_TEMPLATES;

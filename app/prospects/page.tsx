@@ -85,7 +85,7 @@ export default function ProspectsPage() {
     if (signalTemplate === 'custom') {
       keywords = customKeywords.split(',').map((k) => k.trim()).filter((k) => k);
     } else {
-      keywords = SIGNAL_TEMPLATES[signalTemplate];
+      keywords = [...SIGNAL_TEMPLATES[signalTemplate]];
     }
 
     if (keywords.length === 0) {
