@@ -10,9 +10,7 @@ const nextConfig = {
       },
     ]
   },
-  experimental: {
-    serverActions: true,
-  },
+  // Remove this entire experimental block
 }
 
 module.exports = nextConfig
