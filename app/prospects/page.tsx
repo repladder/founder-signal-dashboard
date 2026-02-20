@@ -1,7 +1,4 @@
-
-
 'use client';
-export const dynamic = 'force-dynamic';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -17,7 +14,7 @@ export default function ProspectsPage() {
   const queryClient = useQueryClient();
   const [mounted, setMounted] = useState(false);
   const [linkedinUrls, setLinkedinUrls] = useState('');
-  const [signalTemplate, setSignalTemplate] = useState<'funding' | 'hiring' | 'launch' | 'expansion' | 'custom'>('funding');
+  const [signalTemplate, setSignalTemplate] = useState<'track_all' | 'funding' | 'hiring_sales' | 'hiring' | 'new_role' | 'launch' | 'expansion' | 'custom'>('track_all');
   const [customKeywords, setCustomKeywords] = useState('');
   const [previewResults, setPreviewResults] = useState<any[]>([]);
   const [showPreview, setShowPreview] = useState(false);
@@ -88,6 +85,7 @@ export default function ProspectsPage() {
     if (signalTemplate === 'custom') {
       keywords = customKeywords.split(',').map((k) => k.trim()).filter((k) => k);
     } else {
+      // Create a mutable copy of the array
       keywords = [...SIGNAL_TEMPLATES[signalTemplate]];
     }
 
@@ -144,11 +142,14 @@ export default function ProspectsPage() {
               className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
               disabled={uploadMutation.isPending}
             >
-              <option value="funding">Funding Signals</option>
-              <option value="hiring">Hiring Sales Team</option>
-              <option value="launch">Product Launch</option>
-              <option value="expansion">Expansion</option>
-              <option value="custom">Custom</option>
+              <option value="track_all">🔥 Track All Signals</option>
+              <option value="funding">💰 Funding</option>
+              <option value="hiring_sales">👔 Hiring Sales Team</option>
+              <option value="hiring">🎯 Hiring (General)</option>
+              <option value="new_role">🆕 New Role</option>
+              <option value="launch">🚀 Product Launch</option>
+              <option value="expansion">🌍 Expansion</option>
+              <option value="custom">⚙️ Custom</option>
             </select>
           </div>
 
