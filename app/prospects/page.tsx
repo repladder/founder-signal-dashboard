@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { isAuthenticated } from '@/lib/auth';
 import { fetchProfiles, addProfile, deleteProfile, testScan } from '@/lib/api';
-import { SIGNAL_TEMPLATES } from '@/types';
+import { SIGNAL_TEMPLATES } from '@/types/index';
 import Sidebar from '@/components/Sidebar';
 import Topbar from '@/components/Topbar';
 
