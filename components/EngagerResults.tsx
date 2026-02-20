@@ -48,8 +48,8 @@ export default function EngagerResults({ scanId, onNewScan }: EngagerResultsProp
   const engagers = resultsData.engagers || [];
   
   // Get unique reaction types for filter
-  const reactionTypes = [...new Set(engagers.flatMap((e: any) =>
-    e.reaction_type.split(', ') as string[]
+  const reactionTypes: string[] = [...new Set<string>(engagers.flatMap((e: any) =>
+    e.reaction_type.split(', ')
   ))];
 
   // Filter engagers
