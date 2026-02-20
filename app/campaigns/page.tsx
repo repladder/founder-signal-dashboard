@@ -4,23 +4,18 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { isAuthenticated } from '@/lib/auth';
-import { fetchCampaigns, createCampaign } from '@/lib/api';
 import Sidebar from '@/components/Sidebar';
 import Topbar from '@/components/Topbar';
 import SignalBadge from '@/components/SignalBadge';
-import { SIGNAL_CONFIG } from '@/lib/signal-config';
-
-const SIGNAL_OPTIONS = Object.entries(SIGNAL_CONFIG).map(([value, config]) => ({
-  value,
-  label: `${config.icon} ${config.label}`
-}));
 
 export default function CampaignsPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [mounted, setMounted] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [newCampaign, setNewCampaign] = useState({ name: '', description: '', signal_types: [] as string[] });
+  const [campaignName, setCampaignName] = useState('');
+  const [campaignDescription, setCampaignDescription] = useState('');
+  const [selectedSignals, setSelectedSignals] = useState<string[]>(['track_all']);
 
   useEffect(() => {
     setMounted(true);
@@ -31,29 +26,78 @@ export default function CampaignsPage() {
 
   const { data: campaignsData, isLoading } = useQuery({
     queryKey: ['campaigns'],
-    queryFn: fetchCampaigns,
+    queryFn: async () => {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/campaigns`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('api_key')}`
+        }
+      });
+      if (!res.ok) throw new Error('Failed to fetch campaigns');
+      return res.json();
+    },
     enabled: mounted && isAuthenticated()
   });
 
-  const createMutation = useMutation({
-    mutationFn: createCampaign,
-    onSuccess: () => {
+  const createCampaignMutation = useMutation({
+    mutationFn: async (data: { name: string; description: string; signal_types: string[] }) => {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/campaigns`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('api_key')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+      });
+      if (!res.ok) throw new Error('Failed to create campaign');
+      return res.json();
+    },
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });
       setShowCreateModal(false);
-      setNewCampaign({ name: '', description: '', signal_types: [] });
+      // ✅ REDIRECT TO ADD PROFILES PAGE
+      router.push(`/campaigns/${data.campaign.id}/add-profiles`);
+    },
+    onError: (error: any) => {
+      alert(`Error: ${error.message}`);
     }
   });
 
-  const toggleSignalType = (type: string) => {
-    setNewCampaign(prev => ({
-      ...prev,
-      signal_types: prev.signal_types.includes(type)
-        ? prev.signal_types.filter(t => t !== type)
-        : [...prev.signal_types, type]
-    }));
+  const handleCreateCampaign = () => {
+    if (!campaignName.trim()) {
+      alert('Please enter a campaign name');
+      return;
+    }
+    if (selectedSignals.length === 0) {
+      alert('Please select at least one signal type');
+      return;
+    }
+
+    createCampaignMutation.mutate({
+      name: campaignName,
+      description: campaignDescription,
+      signal_types: selectedSignals
+    });
+  };
+
+  const toggleSignal = (signal: string) => {
+    setSelectedSignals(prev =>
+      prev.includes(signal)
+        ? prev.filter(s => s !== signal)
+        : [...prev, signal]
+    );
   };
 
   if (!mounted || !isAuthenticated()) return null;
+
+  const signalOptions = [
+    { value: 'track_all', icon: '🔥', label: 'Track All Signals' },
+    { value: 'funding', icon: '💰', label: 'Funding' },
+    { value: 'hiring_sales', icon: '👔', label: 'Sales Hiring' },
+    { value: 'hiring', icon: '🎯', label: 'Hiring (General)' },
+    { value: 'new_role', icon: '🆕', label: 'New Role' },
+    { value: 'launch', icon: '🚀', label: 'Launch' },
+    { value: 'expansion', icon: '🌍', label: 'Expansion' }
+  ];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -64,22 +108,28 @@ export default function CampaignsPage() {
 
         <button
           onClick={() => setShowCreateModal(true)}
-          className="mb-6 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          className="mb-6 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
         >
-          + Create Campaign
+          <span>+</span>
+          Create Campaign
         </button>
 
         {isLoading ? (
           <div className="flex justify-center py-12">
             <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
           </div>
+        ) : campaignsData?.campaigns?.length === 0 ? (
+          <div className="bg-white p-12 rounded-lg border text-center">
+            <p className="text-gray-600 mb-4">No campaigns yet. Create your first campaign to start monitoring LinkedIn signals!</p>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              Create Your First Campaign
+            </button>
+          </div>
         ) : (
           <div className="grid gap-6">
-            {campaignsData?.campaigns?.length === 0 && (
-              <div className="bg-white p-12 rounded-lg border text-center">
-                <p className="text-gray-600">No campaigns yet. Create your first one!</p>
-              </div>
-            )}
             {campaignsData?.campaigns?.map((campaign: any) => (
               <div
                 key={campaign.id}
@@ -94,7 +144,7 @@ export default function CampaignsPage() {
                     )}
                   </div>
                   <span
-                    className={`px-3 py-1 rounded-full text-sm ${
+                    className={`px-3 py-1 rounded-full text-sm font-medium ${
                       campaign.status === 'active'
                         ? 'bg-green-100 text-green-700'
                         : 'bg-gray-100 text-gray-700'
@@ -112,7 +162,7 @@ export default function CampaignsPage() {
 
                 <div className="flex gap-6 text-sm text-gray-600">
                   <span>📊 {campaign.profile_count} profiles</span>
-                  <span>🎯 {campaign.signals_detected} signals</span>
+                  <span>🎯 {campaign.signals_detected} signals detected</span>
                 </div>
               </div>
             ))}
@@ -120,66 +170,84 @@ export default function CampaignsPage() {
         )}
       </div>
 
+      {/* Create Campaign Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-8 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-6">Create Campaign</h2>
+          <div className="bg-white rounded-lg p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <h2 className="text-2xl font-bold mb-6">Create New Campaign</h2>
 
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+              <label className="block text-sm font-medium mb-2">
+                Campaign Name *
+              </label>
               <input
                 type="text"
-                value={newCampaign.name}
-                onChange={e => setNewCampaign(prev => ({ ...prev, name: e.target.value }))}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="e.g. Series A Founders"
-              />
-            </div>
-
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-              <textarea
-                value={newCampaign.description}
-                onChange={e => setNewCampaign(prev => ({ ...prev, description: e.target.value }))}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                rows={2}
-                placeholder="Optional description"
+                value={campaignName}
+                onChange={(e) => setCampaignName(e.target.value)}
+                placeholder="e.g., SaaS Founders Hiring Sales"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={createCampaignMutation.isPending}
               />
             </div>
 
             <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Signal Types *</label>
-              <div className="flex flex-wrap gap-2">
-                {SIGNAL_OPTIONS.map(option => (
+              <label className="block text-sm font-medium mb-2">
+                Description (Optional)
+              </label>
+              <textarea
+                value={campaignDescription}
+                onChange={(e) => setCampaignDescription(e.target.value)}
+                placeholder="Brief description of this campaign..."
+                rows={3}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={createCampaignMutation.isPending}
+              />
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-sm font-medium mb-3">
+                Select Signal Types *
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                {signalOptions.map((option) => (
                   <button
                     key={option.value}
-                    type="button"
-                    onClick={() => toggleSignalType(option.value)}
-                    className={`px-3 py-1 rounded-full text-sm border transition-colors ${
-                      newCampaign.signal_types.includes(option.value)
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
+                    onClick={() => toggleSignal(option.value)}
+                    disabled={createCampaignMutation.isPending}
+                    className={`p-3 border-2 rounded-lg text-left transition-all ${
+                      selectedSignals.includes(option.value)
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-200 hover:border-gray-300'
                     }`}
                   >
-                    {option.label}
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xl">{option.icon}</span>
+                      <span className="font-medium">{option.label}</span>
+                    </div>
                   </button>
                 ))}
               </div>
             </div>
 
-            <div className="flex gap-3 justify-end">
+            <div className="flex gap-3">
               <button
-                onClick={() => setShowCreateModal(false)}
-                className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+                onClick={handleCreateCampaign}
+                disabled={createCampaignMutation.isPending}
+                className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
-                Cancel
+                {createCampaignMutation.isPending ? 'Creating...' : 'Create Campaign'}
               </button>
               <button
-                onClick={() => createMutation.mutate(newCampaign)}
-                disabled={!newCampaign.name || newCampaign.signal_types.length === 0 || createMutation.isPending}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={() => {
+                  setShowCreateModal(false);
+                  setCampaignName('');
+                  setCampaignDescription('');
+                  setSelectedSignals(['track_all']);
+                }}
+                disabled={createCampaignMutation.isPending}
+                className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50"
               >
-                {createMutation.isPending ? 'Creating...' : 'Create'}
+                Cancel
               </button>
             </div>
           </div>
