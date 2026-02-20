@@ -10,6 +10,7 @@ export default function Sidebar() {
 
   const navItems = [
     { href: '/dashboard', label: 'Dashboard' },
+    { href: '/campaigns', label: 'Campaigns' },
     { href: '/prospects', label: 'Prospects' },
     { href: '/signals', label: 'Signals' },
     { href: '/billing', label: 'Billing' },

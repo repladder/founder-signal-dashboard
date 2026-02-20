@@ -92,4 +92,40 @@ export const triggerScan = async () => {
   return response.data;
 };
 
+// Campaign APIs
+export const fetchCampaigns = async () => {
+  const response = await apiClient.get('/campaigns');
+  return response.data;
+};
+
+export const fetchCampaign = async (id: string) => {
+  const response = await apiClient.get(`/campaigns/${id}`);
+  return response.data;
+};
+
+export const createCampaign = async (data: { name: string; description?: string; signal_types: string[] }) => {
+  const response = await apiClient.post('/campaigns', data);
+  return response.data;
+};
+
+export const updateCampaign = async (id: string, data: { name?: string; description?: string; signal_types?: string[]; status?: string }) => {
+  const response = await apiClient.patch(`/campaigns/${id}`, data);
+  return response.data;
+};
+
+export const deleteCampaign = async (id: string) => {
+  const response = await apiClient.delete(`/campaigns/${id}`);
+  return response.data;
+};
+
+export const fetchCampaignSignals = async (id: string, params?: { limit?: number; offset?: number }) => {
+  const response = await apiClient.get(`/campaigns/${id}/signals`, { params });
+  return response.data;
+};
+
+export const addProfilesToCampaign = async (id: string, linkedin_urls: string[]) => {
+  const response = await apiClient.post(`/campaigns/${id}/profiles`, { linkedin_urls });
+  return response.data;
+};
+
 export default apiClient;
