@@ -12,6 +12,7 @@ export default function EngagerResults({ scanId, onNewScan }: EngagerResultsProp
   const [filterReaction, setFilterReaction] = useState<string>('all');
   const [filterIndustry, setFilterIndustry] = useState<string>('all');
   const [filterEmployeeSize, setFilterEmployeeSize] = useState<string>('all');
+  const [filterCompanyLocation, setFilterCompanyLocation] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
 
   const { data: resultsData, isLoading } = useQuery({
@@ -64,6 +65,11 @@ export default function EngagerResults({ scanId, onNewScan }: EngagerResultsProp
     .filter((s: string) => s)
   )];
 
+  const companyLocations: string[] = [...new Set<string>(engagers
+    .map((e: any) => e.company_location)
+    .filter((l: string) => l)
+  )];
+
   // Filter engagers based on ICP criteria
   const filteredEngagers = engagers.filter((engager: any) => {
     const matchesReaction = filterReaction === 'all' || 
@@ -74,6 +80,9 @@ export default function EngagerResults({ scanId, onNewScan }: EngagerResultsProp
     
     const matchesEmployeeSize = filterEmployeeSize === 'all' ||
       engager.employee_size === filterEmployeeSize;
+
+    const matchesCompanyLocation = filterCompanyLocation === 'all' ||
+      engager.company_location === filterCompanyLocation;
     
     const matchesSearch = searchTerm === '' ||
       engager.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -81,7 +90,8 @@ export default function EngagerResults({ scanId, onNewScan }: EngagerResultsProp
       engager.company_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       engager.location?.toLowerCase().includes(searchTerm.toLowerCase());
     
-    return matchesReaction && matchesIndustry && matchesEmployeeSize && matchesSearch;
+    return matchesReaction && matchesIndustry && matchesEmployeeSize && 
+           matchesCompanyLocation && matchesSearch;
   });
 
   const handleDownloadCSV = () => {
@@ -151,7 +161,7 @@ export default function EngagerResults({ scanId, onNewScan }: EngagerResultsProp
         </div>
 
         {/* Filter Row */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {/* Reaction Type Filter */}
           <div>
             <label className="block text-sm font-medium mb-2">Reaction Type</label>
@@ -196,6 +206,21 @@ export default function EngagerResults({ scanId, onNewScan }: EngagerResultsProp
               ))}
             </select>
           </div>
+
+          {/* Company Location Filter - NEW! */}
+          <div>
+            <label className="block text-sm font-medium mb-2">Company Location</label>
+            <select
+              value={filterCompanyLocation}
+              onChange={(e) => setFilterCompanyLocation(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">All Locations</option>
+              {companyLocations.map((location) => (
+                <option key={location} value={location}>{location}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <p className="text-sm text-gray-500 mt-4">
@@ -203,7 +228,7 @@ export default function EngagerResults({ scanId, onNewScan }: EngagerResultsProp
         </p>
       </div>
 
-      {/* Results Table - FULL DATA */}
+      {/* Results Table - WITH COMPANY LOCATION */}
       <div className="bg-white rounded-lg border overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -214,7 +239,8 @@ export default function EngagerResults({ scanId, onNewScan }: EngagerResultsProp
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Company</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Industry</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Size</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Co. Location</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Person Loc.</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Connections</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reaction</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Profile</th>
@@ -223,7 +249,7 @@ export default function EngagerResults({ scanId, onNewScan }: EngagerResultsProp
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredEngagers.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={10} className="px-6 py-12 text-center text-gray-500">
                     No engagers match your ICP filters
                   </td>
                 </tr>
@@ -263,6 +289,9 @@ export default function EngagerResults({ scanId, onNewScan }: EngagerResultsProp
                       <div className="text-gray-600 text-xs">{engager.employee_size || '-'}</div>
                     </td>
                     <td className="px-4 py-3">
+                      <div className="text-gray-600 text-xs">{engager.company_location || '-'}</div>
+                    </td>
+                    <td className="px-4 py-3">
                       <div className="text-gray-600 text-xs">{engager.location || '-'}</div>
                     </td>
                     <td className="px-4 py-3">
@@ -299,12 +328,12 @@ export default function EngagerResults({ scanId, onNewScan }: EngagerResultsProp
           <span className="text-xl">💡</span>
           <div className="flex-1">
             <p className="text-sm font-medium text-blue-900 mb-1">
-              Complete Outbound-Ready Data
+              Complete Outbound-Ready Data (11 Fields)
             </p>
             <p className="text-xs text-blue-800">
-              The CSV includes ALL fields needed for outbound: Name, Title, Company, Industry, Employee Size, 
-              Location, Connections, Followers, and both personal + company LinkedIn URLs. 
-              Import directly into your CRM or outreach tools!
+              CSV includes: Name, Title, Person Location, Industry, LinkedIn URL, Connections, Followers,
+              Company Name, Employee Size, <strong>Company Location (NEW!)</strong>, and Company URL.
+              Import directly into your CRM!
             </p>
           </div>
         </div>
