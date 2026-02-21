@@ -59,48 +59,48 @@ export default function EngagerResults({ scanId, onNewScan }: EngagerResultsProp
   }
 
   const engagers = resultsData.engagers || [];
-
-  // Get unique values for filters (Set<string> generic prevents TypeScript Key error)
-  const reactionTypes: string[] = [...new Set<string>(engagers.flatMap((e: any) =>
+  
+  // Get unique values for filters
+  const reactionTypes = [...new Set(engagers.flatMap((e: any) => 
     e.reaction_type.split(', ')
   ))];
-
-  const industries: string[] = [...new Set<string>(engagers
+  
+  const industries = [...new Set(engagers
     .map((e: any) => e.industry)
     .filter((i: string) => i)
   )];
-
-  const employeeSizes: string[] = [...new Set<string>(engagers
+  
+  const employeeSizes = [...new Set(engagers
     .map((e: any) => e.employee_size)
     .filter((s: string) => s)
   )];
 
-  const companyLocations: string[] = [...new Set<string>(engagers
+  const companyLocations = [...new Set(engagers
     .map((e: any) => e.company_location)
     .filter((l: string) => l)
   )];
 
   // Filter engagers
   const filteredEngagers = engagers.filter((engager: any) => {
-    const matchesReaction = filterReaction === 'all' ||
+    const matchesReaction = filterReaction === 'all' || 
       engager.reaction_type.toLowerCase().includes(filterReaction.toLowerCase());
-
+    
     const matchesIndustry = filterIndustry === 'all' ||
       engager.industry === filterIndustry;
-
+    
     const matchesEmployeeSize = filterEmployeeSize === 'all' ||
       engager.employee_size === filterEmployeeSize;
 
     const matchesCompanyLocation = filterCompanyLocation === 'all' ||
       engager.company_location === filterCompanyLocation;
-
+    
     const matchesSearch = searchTerm === '' ||
       engager.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       engager.job_title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       engager.company_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       engager.location?.toLowerCase().includes(searchTerm.toLowerCase());
-
-    return matchesReaction && matchesIndustry && matchesEmployeeSize &&
+    
+    return matchesReaction && matchesIndustry && matchesEmployeeSize && 
            matchesCompanyLocation && matchesSearch;
   });
 
@@ -159,7 +159,7 @@ export default function EngagerResults({ scanId, onNewScan }: EngagerResultsProp
       {/* ICP Filters */}
       <div className="bg-white p-6 rounded-lg border">
         <h3 className="font-semibold mb-4">🎯 Filter by ICP</h3>
-
+        
         <div className="mb-4">
           <input
             type="text"
