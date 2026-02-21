@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface EngagerResultsProps {
   scanId: string;
@@ -14,24 +14,34 @@ export default function EngagerResults({ scanId, onNewScan }: EngagerResultsProp
   const [filterEmployeeSize, setFilterEmployeeSize] = useState<string>('all');
   const [filterCompanyLocation, setFilterCompanyLocation] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [mounted, setMounted] = useState(false);
+
+  // Fix: Only render after mounting on client
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const { data: resultsData, isLoading } = useQuery({
     queryKey: ['engager-results', scanId],
     queryFn: async () => {
+      const apiKey = typeof window !== 'undefined' ? localStorage.getItem('api_key') : null;
+      if (!apiKey) throw new Error('No API key');
+
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_BASE_URL}/engagers/scan/${scanId}/results`,
         {
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('api_key')}`
+            'Authorization': `Bearer ${apiKey}`
           }
         }
       );
       if (!res.ok) throw new Error('Failed to fetch results');
       return res.json();
-    }
+    },
+    enabled: mounted // Only run after mount
   });
 
-  if (isLoading) {
+  if (!mounted || isLoading) {
     return (
       <div className="bg-white p-12 rounded-lg border text-center">
         <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
@@ -49,8 +59,8 @@ export default function EngagerResults({ scanId, onNewScan }: EngagerResultsProp
   }
 
   const engagers = resultsData.engagers || [];
-  
-  // Get unique values for filters
+
+  // Get unique values for filters (Set<string> generic prevents TypeScript Key error)
   const reactionTypes: string[] = [...new Set<string>(engagers.flatMap((e: any) =>
     e.reaction_type.split(', ')
   ))];
@@ -70,33 +80,34 @@ export default function EngagerResults({ scanId, onNewScan }: EngagerResultsProp
     .filter((l: string) => l)
   )];
 
-  // Filter engagers based on ICP criteria
+  // Filter engagers
   const filteredEngagers = engagers.filter((engager: any) => {
-    const matchesReaction = filterReaction === 'all' || 
+    const matchesReaction = filterReaction === 'all' ||
       engager.reaction_type.toLowerCase().includes(filterReaction.toLowerCase());
-    
+
     const matchesIndustry = filterIndustry === 'all' ||
       engager.industry === filterIndustry;
-    
+
     const matchesEmployeeSize = filterEmployeeSize === 'all' ||
       engager.employee_size === filterEmployeeSize;
 
     const matchesCompanyLocation = filterCompanyLocation === 'all' ||
       engager.company_location === filterCompanyLocation;
-    
+
     const matchesSearch = searchTerm === '' ||
       engager.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       engager.job_title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       engager.company_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       engager.location?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    return matchesReaction && matchesIndustry && matchesEmployeeSize && 
+
+    return matchesReaction && matchesIndustry && matchesEmployeeSize &&
            matchesCompanyLocation && matchesSearch;
   });
 
   const handleDownloadCSV = () => {
+    const apiKey = localStorage.getItem('api_key');
     window.open(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL}/engagers/scan/${scanId}/download`,
+      `${process.env.NEXT_PUBLIC_API_BASE_URL}/engagers/scan/${scanId}/download?api_key=${apiKey}`,
       '_blank'
     );
   };
@@ -107,22 +118,22 @@ export default function EngagerResults({ scanId, onNewScan }: EngagerResultsProp
       <div className="bg-white p-6 rounded-lg border">
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
-            <h2 className="text-xl font-bold mb-2">✅ Full Enrichment Complete!</h2>
+            <h2 className="text-xl font-bold mb-2">✅ Enrichment Complete!</h2>
             <p className="text-sm text-gray-600 mb-3 break-all">
               {resultsData.post_url}
             </p>
             <div className="flex gap-6 text-sm flex-wrap">
               <span className="text-gray-600">
-                📊 <strong>{resultsData.total_engagers}</strong> total engagers
+                📊 <strong>{resultsData.total_engagers || 0}</strong> total
               </span>
               <span className="text-gray-600">
-                👤 <strong>{resultsData.unique_profiles}</strong> unique profiles
+                👤 <strong>{resultsData.unique_profiles || 0}</strong> unique
               </span>
               <span className="text-gray-600">
-                ✅ <strong>{resultsData.profiles_enriched}</strong> profiles enriched
+                ✅ <strong>{resultsData.profiles_enriched || 0}</strong> enriched
               </span>
               <span className="text-gray-600">
-                🏢 <strong>{resultsData.companies_enriched}</strong> companies enriched
+                🏢 <strong>{resultsData.companies_enriched || 0}</strong> companies
               </span>
             </div>
           </div>
@@ -134,114 +145,108 @@ export default function EngagerResults({ scanId, onNewScan }: EngagerResultsProp
             className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"
           >
             <span>⬇️</span>
-            Download Complete CSV
+            Download CSV
           </button>
           <button
             onClick={onNewScan}
             className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
           >
-            Start New Scan
+            New Scan
           </button>
         </div>
       </div>
 
       {/* ICP Filters */}
       <div className="bg-white p-6 rounded-lg border">
-        <h3 className="font-semibold mb-4">🎯 Filter by ICP Criteria</h3>
-        
-        {/* Search */}
+        <h3 className="font-semibold mb-4">🎯 Filter by ICP</h3>
+
         <div className="mb-4">
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search by name, title, company, or location..."
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Search..."
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg"
           />
         </div>
 
-        {/* Filter Row */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {/* Reaction Type Filter */}
           <div>
-            <label className="block text-sm font-medium mb-2">Reaction Type</label>
+            <label className="block text-sm font-medium mb-2">Reaction</label>
             <select
               value={filterReaction}
               onChange={(e) => setFilterReaction(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg"
             >
-              <option value="all">All Reactions</option>
-              {reactionTypes.map((reaction) => (
-                <option key={reaction} value={reaction}>{reaction}</option>
+              <option value="all">All</option>
+              {reactionTypes.map((r) => (
+                <option key={r} value={r}>{r}</option>
               ))}
             </select>
           </div>
 
-          {/* Industry Filter */}
           <div>
             <label className="block text-sm font-medium mb-2">Industry</label>
             <select
               value={filterIndustry}
               onChange={(e) => setFilterIndustry(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg"
             >
-              <option value="all">All Industries</option>
-              {industries.map((industry) => (
-                <option key={industry} value={industry}>{industry}</option>
+              <option value="all">All</option>
+              {industries.map((i) => (
+                <option key={i} value={i}>{i}</option>
               ))}
             </select>
           </div>
 
-          {/* Employee Size Filter */}
           <div>
-            <label className="block text-sm font-medium mb-2">Company Size</label>
+            <label className="block text-sm font-medium mb-2">Size</label>
             <select
               value={filterEmployeeSize}
               onChange={(e) => setFilterEmployeeSize(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg"
             >
-              <option value="all">All Sizes</option>
-              {employeeSizes.map((size) => (
-                <option key={size} value={size}>{size}</option>
+              <option value="all">All</option>
+              {employeeSizes.map((s) => (
+                <option key={s} value={s}>{s}</option>
               ))}
             </select>
           </div>
 
-          {/* Company Location Filter - NEW! */}
           <div>
-            <label className="block text-sm font-medium mb-2">Company Location</label>
+            <label className="block text-sm font-medium mb-2">Co. Location</label>
             <select
               value={filterCompanyLocation}
               onChange={(e) => setFilterCompanyLocation(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg"
             >
-              <option value="all">All Locations</option>
-              {companyLocations.map((location) => (
-                <option key={location} value={location}>{location}</option>
+              <option value="all">All</option>
+              {companyLocations.map((l) => (
+                <option key={l} value={l}>{l}</option>
               ))}
             </select>
           </div>
         </div>
 
         <p className="text-sm text-gray-500 mt-4">
-          Showing {filteredEngagers.length} of {engagers.length} engagers
+          Showing {filteredEngagers.length} of {engagers.length}
         </p>
       </div>
 
-      {/* Results Table - WITH COMPANY LOCATION */}
+      {/* Results Table */}
       <div className="bg-white rounded-lg border overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Job Title</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Company</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Industry</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Size</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Co. Location</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Person Loc.</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Connections</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Co. Loc</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Person</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Conns</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reaction</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Profile</th>
               </tr>
@@ -250,67 +255,35 @@ export default function EngagerResults({ scanId, onNewScan }: EngagerResultsProp
               {filteredEngagers.length === 0 ? (
                 <tr>
                   <td colSpan={10} className="px-6 py-12 text-center text-gray-500">
-                    No engagers match your ICP filters
+                    No results
                   </td>
                 </tr>
               ) : (
-                filteredEngagers.map((engager: any, index: number) => (
-                  <tr key={index} className="hover:bg-gray-50">
+                filteredEngagers.map((e: any, i: number) => (
+                  <tr key={i} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 font-medium">{e.name}</td>
+                    <td className="px-4 py-3">{e.job_title || '-'}</td>
                     <td className="px-4 py-3">
-                      <div className="font-medium text-gray-900">{engager.name}</div>
+                      {e.company_name ? (
+                        e.company_profile_url ? (
+                          <a href={e.company_profile_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                            {e.company_name}
+                          </a>
+                        ) : e.company_name
+                      ) : '-'}
                     </td>
+                    <td className="px-4 py-3 text-xs">{e.industry || '-'}</td>
+                    <td className="px-4 py-3 text-xs">{e.employee_size || '-'}</td>
+                    <td className="px-4 py-3 text-xs">{e.company_location || '-'}</td>
+                    <td className="px-4 py-3 text-xs">{e.location || '-'}</td>
+                    <td className="px-4 py-3 text-xs">{e.total_connections > 0 ? e.total_connections : '-'}</td>
                     <td className="px-4 py-3">
-                      <div className="text-gray-900">{engager.job_title || '-'}</div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="text-gray-900">
-                        {engager.company_name ? (
-                          engager.company_profile_url ? (
-                            <a
-                              href={engager.company_profile_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:underline"
-                            >
-                              {engager.company_name}
-                            </a>
-                          ) : (
-                            engager.company_name
-                          )
-                        ) : (
-                          '-'
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="text-gray-600">{engager.industry || '-'}</div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="text-gray-600 text-xs">{engager.employee_size || '-'}</div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="text-gray-600 text-xs">{engager.company_location || '-'}</div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="text-gray-600 text-xs">{engager.location || '-'}</div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="text-gray-600 text-xs">
-                        {engager.total_connections > 0 ? `${engager.total_connections}` : '-'}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full whitespace-nowrap">
-                        {engager.reaction_type}
+                      <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
+                        {e.reaction_type}
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <a
-                        href={engager.linkedin_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-800 hover:underline whitespace-nowrap"
-                      >
+                      <a href={e.linkedin_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
                         View →
                       </a>
                     </td>
@@ -319,23 +292,6 @@ export default function EngagerResults({ scanId, onNewScan }: EngagerResultsProp
               )}
             </tbody>
           </table>
-        </div>
-      </div>
-
-      {/* Export Info */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <div className="flex items-start gap-2">
-          <span className="text-xl">💡</span>
-          <div className="flex-1">
-            <p className="text-sm font-medium text-blue-900 mb-1">
-              Complete Outbound-Ready Data (11 Fields)
-            </p>
-            <p className="text-xs text-blue-800">
-              CSV includes: Name, Title, Person Location, Industry, LinkedIn URL, Connections, Followers,
-              Company Name, Employee Size, <strong>Company Location (NEW!)</strong>, and Company URL.
-              Import directly into your CRM!
-            </p>
-          </div>
         </div>
       </div>
     </div>
