@@ -10,6 +10,8 @@ interface EngagerResultsProps {
 
 export default function EngagerResults({ scanId, onNewScan }: EngagerResultsProps) {
   const [filterReaction, setFilterReaction] = useState<string>('all');
+  const [filterIndustry, setFilterIndustry] = useState<string>('all');
+  const [filterEmployeeSize, setFilterEmployeeSize] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
 
   const { data: resultsData, isLoading } = useQuery({
@@ -47,22 +49,39 @@ export default function EngagerResults({ scanId, onNewScan }: EngagerResultsProp
 
   const engagers = resultsData.engagers || [];
   
-  // Get unique reaction types for filter
+  // Get unique values for filters
   const reactionTypes: string[] = [...new Set<string>(engagers.flatMap((e: any) =>
     e.reaction_type.split(', ')
   ))];
 
-  // Filter engagers
+  const industries: string[] = [...new Set<string>(engagers
+    .map((e: any) => e.industry)
+    .filter((i: string) => i)
+  )];
+
+  const employeeSizes: string[] = [...new Set<string>(engagers
+    .map((e: any) => e.employee_size)
+    .filter((s: string) => s)
+  )];
+
+  // Filter engagers based on ICP criteria
   const filteredEngagers = engagers.filter((engager: any) => {
     const matchesReaction = filterReaction === 'all' || 
       engager.reaction_type.toLowerCase().includes(filterReaction.toLowerCase());
     
+    const matchesIndustry = filterIndustry === 'all' ||
+      engager.industry === filterIndustry;
+    
+    const matchesEmployeeSize = filterEmployeeSize === 'all' ||
+      engager.employee_size === filterEmployeeSize;
+    
     const matchesSearch = searchTerm === '' ||
       engager.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      engager.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      engager.company.toLowerCase().includes(searchTerm.toLowerCase());
+      engager.job_title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      engager.company_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      engager.location?.toLowerCase().includes(searchTerm.toLowerCase());
     
-    return matchesReaction && matchesSearch;
+    return matchesReaction && matchesIndustry && matchesEmployeeSize && matchesSearch;
   });
 
   const handleDownloadCSV = () => {
@@ -74,20 +93,26 @@ export default function EngagerResults({ scanId, onNewScan }: EngagerResultsProp
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header with Stats */}
       <div className="bg-white p-6 rounded-lg border">
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
-            <h2 className="text-xl font-bold mb-2">✅ Scan Complete!</h2>
+            <h2 className="text-xl font-bold mb-2">✅ Full Enrichment Complete!</h2>
             <p className="text-sm text-gray-600 mb-3 break-all">
               {resultsData.post_url}
             </p>
-            <div className="flex gap-6 text-sm">
+            <div className="flex gap-6 text-sm flex-wrap">
               <span className="text-gray-600">
                 📊 <strong>{resultsData.total_engagers}</strong> total engagers
               </span>
               <span className="text-gray-600">
                 👤 <strong>{resultsData.unique_profiles}</strong> unique profiles
+              </span>
+              <span className="text-gray-600">
+                ✅ <strong>{resultsData.profiles_enriched}</strong> profiles enriched
+              </span>
+              <span className="text-gray-600">
+                🏢 <strong>{resultsData.companies_enriched}</strong> companies enriched
               </span>
             </div>
           </div>
@@ -99,7 +124,7 @@ export default function EngagerResults({ scanId, onNewScan }: EngagerResultsProp
             className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"
           >
             <span>⬇️</span>
-            Download CSV
+            Download Complete CSV
           </button>
           <button
             onClick={onNewScan}
@@ -110,118 +135,152 @@ export default function EngagerResults({ scanId, onNewScan }: EngagerResultsProp
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="bg-white p-4 rounded-lg border">
-        <div className="flex flex-wrap gap-4">
-          <div className="flex-1 min-w-[200px]">
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search by name, title, or company..."
+      {/* ICP Filters */}
+      <div className="bg-white p-6 rounded-lg border">
+        <h3 className="font-semibold mb-4">🎯 Filter by ICP Criteria</h3>
+        
+        {/* Search */}
+        <div className="mb-4">
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search by name, title, company, or location..."
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        {/* Filter Row */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Reaction Type Filter */}
+          <div>
+            <label className="block text-sm font-medium mb-2">Reaction Type</label>
+            <select
+              value={filterReaction}
+              onChange={(e) => setFilterReaction(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          
-          <div className="flex gap-2">
-            <button
-              onClick={() => setFilterReaction('all')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                filterReaction === 'all'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
             >
-              All
-            </button>
-            {reactionTypes.map((reaction) => (
-              <button
-                key={reaction}
-                onClick={() => setFilterReaction(reaction)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                  filterReaction === reaction
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                {reaction}
-              </button>
-            ))}
+              <option value="all">All Reactions</option>
+              {reactionTypes.map((reaction) => (
+                <option key={reaction} value={reaction}>{reaction}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Industry Filter */}
+          <div>
+            <label className="block text-sm font-medium mb-2">Industry</label>
+            <select
+              value={filterIndustry}
+              onChange={(e) => setFilterIndustry(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">All Industries</option>
+              {industries.map((industry) => (
+                <option key={industry} value={industry}>{industry}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Employee Size Filter */}
+          <div>
+            <label className="block text-sm font-medium mb-2">Company Size</label>
+            <select
+              value={filterEmployeeSize}
+              onChange={(e) => setFilterEmployeeSize(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">All Sizes</option>
+              {employeeSizes.map((size) => (
+                <option key={size} value={size}>{size}</option>
+              ))}
+            </select>
           </div>
         </div>
 
-        <p className="text-sm text-gray-500 mt-2">
+        <p className="text-sm text-gray-500 mt-4">
           Showing {filteredEngagers.length} of {engagers.length} engagers
         </p>
       </div>
 
-      {/* Results Table */}
+      {/* Results Table - FULL DATA */}
       <div className="bg-white rounded-lg border overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Name
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Reaction
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Title
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Company
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Location
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Profile
-                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Job Title</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Company</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Industry</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Size</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Connections</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reaction</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Profile</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredEngagers.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
-                    No engagers match your filters
+                  <td colSpan={9} className="px-6 py-12 text-center text-gray-500">
+                    No engagers match your ICP filters
                   </td>
                 </tr>
               ) : (
                 filteredEngagers.map((engager: any, index: number) => (
                   <tr key={index} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
-                        {engager.name}
+                    <td className="px-4 py-3">
+                      <div className="font-medium text-gray-900">{engager.name}</div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="text-gray-900">{engager.job_title || '-'}</div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="text-gray-900">
+                        {engager.company_name ? (
+                          engager.company_profile_url ? (
+                            <a
+                              href={engager.company_profile_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:underline"
+                            >
+                              {engager.company_name}
+                            </a>
+                          ) : (
+                            engager.company_name
+                          )
+                        ) : (
+                          '-'
+                        )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                    <td className="px-4 py-3">
+                      <div className="text-gray-600">{engager.industry || '-'}</div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="text-gray-600 text-xs">{engager.employee_size || '-'}</div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="text-gray-600 text-xs">{engager.location || '-'}</div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="text-gray-600 text-xs">
+                        {engager.total_connections > 0 ? `${engager.total_connections}` : '-'}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full whitespace-nowrap">
                         {engager.reaction_type}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900">
-                        {engager.title || '-'}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900">
-                        {engager.company || '-'}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">
-                        {engager.location || '-'}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <td className="px-4 py-3">
                       <a
                         href={engager.linkedin_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-800 hover:underline"
+                        className="text-blue-600 hover:text-blue-800 hover:underline whitespace-nowrap"
                       >
                         View →
                       </a>
@@ -231,6 +290,23 @@ export default function EngagerResults({ scanId, onNewScan }: EngagerResultsProp
               )}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      {/* Export Info */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="flex items-start gap-2">
+          <span className="text-xl">💡</span>
+          <div className="flex-1">
+            <p className="text-sm font-medium text-blue-900 mb-1">
+              Complete Outbound-Ready Data
+            </p>
+            <p className="text-xs text-blue-800">
+              The CSV includes ALL fields needed for outbound: Name, Title, Company, Industry, Employee Size, 
+              Location, Connections, Followers, and both personal + company LinkedIn URLs. 
+              Import directly into your CRM or outreach tools!
+            </p>
+          </div>
         </div>
       </div>
     </div>
