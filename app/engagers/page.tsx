@@ -10,37 +10,49 @@ import EngagerResults from '@/components/EngagerResults';
 export default function EngagersPage() {
   const [showModal, setShowModal] = useState(false);
   const [selectedScanId, setSelectedScanId] = useState<string | null>(null);
-  const [isClient, setIsClient] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  // Fix: Only access localStorage after mounting
+  // Fix: Wait for client-side mount before accessing localStorage
   useEffect(() => {
-    setIsClient(true);
+    setMounted(true);
   }, []);
 
-  // Fetch recent scans
+  // Fetch recent scans - with safe localStorage access
   const { data: scansData, refetch: refetchScans } = useQuery({
     queryKey: ['engager-scans'],
     queryFn: async () => {
-      // Only fetch if we're on client and have API key
-      if (!isClient) return { success: true, scans: [] };
+      // Safe localStorage access
+      let apiKey = null;
+      if (typeof window !== 'undefined') {
+        apiKey = localStorage.getItem('api_key');
+      }
 
-      const apiKey = typeof window !== 'undefined' ? localStorage.getItem('api_key') : null;
-      if (!apiKey) return { success: true, scans: [] };
+      if (!apiKey) {
+        return { success: true, scans: [] };
+      }
 
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/engagers/scans`,
-        {
-          headers: {
-            'Authorization': `Bearer ${apiKey}`
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_BASE_URL}/engagers/scans`,
+          {
+            headers: {
+              'Authorization': `Bearer ${apiKey}`
+            }
           }
-        }
-      );
+        );
 
-      if (!res.ok) return { success: true, scans: [] };
-      return res.json();
+        if (!res.ok) {
+          return { success: true, scans: [] };
+        }
+
+        return res.json();
+      } catch (error) {
+        console.error('Error fetching scans:', error);
+        return { success: true, scans: [] };
+      }
     },
-    refetchInterval: 5000, // Poll every 5 seconds
-    enabled: isClient // Only run query on client
+    refetchInterval: 5000,
+    enabled: mounted // Only run after mount
   });
 
   const handleScanComplete = (scanId: string) => {
@@ -53,23 +65,6 @@ export default function EngagersPage() {
     setSelectedScanId(null);
     setShowModal(true);
   };
-
-  // Show loading state during SSR
-  if (!isClient) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Sidebar />
-        <div className="ml-64 p-8">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h1 className="text-3xl font-bold mb-2">LinkedIn Post Engagers</h1>
-              <p className="text-gray-600">Loading...</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   const scans = scansData?.scans || [];
 
