@@ -1,181 +1,187 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { isAuthenticated } from '@/lib/auth';
+import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import Sidebar from '@/components/Sidebar';
 import Topbar from '@/components/Topbar';
 import EngagerScanModal from '@/components/EngagerScanModal';
 import EngagerResults from '@/components/EngagerResults';
 
 export default function EngagersPage() {
-  const router = useRouter();
-  const queryClient = useQueryClient();
-  const [mounted, setMounted] = useState(false);
-  const [showScanModal, setShowScanModal] = useState(false);
-  const [activeScanId, setActiveScanId] = useState<string | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  const [selectedScanId, setSelectedScanId] = useState<string | null>(null);
+  const [isClient, setIsClient] = useState(false);
 
+  // Fix: Only access localStorage after mounting
   useEffect(() => {
-    setMounted(true);
-    if (!isAuthenticated()) {
-      router.push('/login');
-    }
-  }, [router]);
+    setIsClient(true);
+  }, []);
 
   // Fetch recent scans
-  const { data: scansData } = useQuery({
+  const { data: scansData, refetch: refetchScans } = useQuery({
     queryKey: ['engager-scans'],
     queryFn: async () => {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/engagers/scans`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('api_key')}`
+      // Only fetch if we're on client and have API key
+      if (!isClient) return { success: true, scans: [] };
+
+      const apiKey = typeof window !== 'undefined' ? localStorage.getItem('api_key') : null;
+      if (!apiKey) return { success: true, scans: [] };
+
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/engagers/scans`,
+        {
+          headers: {
+            'Authorization': `Bearer ${apiKey}`
+          }
         }
-      });
-      if (!res.ok) throw new Error('Failed to fetch scans');
+      );
+
+      if (!res.ok) return { success: true, scans: [] };
       return res.json();
     },
-    enabled: mounted && isAuthenticated(),
-    refetchInterval: 5000 // Refresh every 5 seconds
+    refetchInterval: 5000, // Poll every 5 seconds
+    enabled: isClient // Only run query on client
   });
 
   const handleScanComplete = (scanId: string) => {
-    setShowScanModal(false);
-    setActiveScanId(scanId);
-    queryClient.invalidateQueries({ queryKey: ['engager-scans'] });
+    setShowModal(false);
+    setSelectedScanId(scanId);
+    refetchScans();
   };
 
   const handleNewScan = () => {
-    setActiveScanId(null);
-    setShowScanModal(true);
+    setSelectedScanId(null);
+    setShowModal(true);
   };
 
-  if (!mounted || !isAuthenticated()) return null;
+  // Show loading state during SSR
+  if (!isClient) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Sidebar />
+        <div className="ml-64 p-8">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h1 className="text-3xl font-bold mb-2">LinkedIn Post Engagers</h1>
+              <p className="text-gray-600">Loading...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-  const recentScans = scansData?.scans || [];
-  const completedScans = recentScans.filter((s: any) => s.status === 'completed');
+  const scans = scansData?.scans || [];
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Sidebar />
-      
+
       <div className="ml-64 p-8">
         <Topbar title="Engagers" />
 
         {/* Header */}
-        <div className="mb-6">
-          <div className="flex items-start justify-between">
-            <div>
-              <h1 className="text-3xl font-bold mb-2">LinkedIn Post Engagers</h1>
-              <p className="text-gray-600">
-                Extract engaged prospects from any LinkedIn post
-              </p>
-            </div>
-            <button
-              onClick={handleNewScan}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
-            >
-              <span>+</span>
-              New Scan
-            </button>
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">LinkedIn Post Engagers</h1>
+            <p className="text-gray-600">
+              Extract engaged prospects from any LinkedIn post
+            </p>
           </div>
+          <button
+            onClick={handleNewScan}
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+          >
+            + New Scan
+          </button>
         </div>
 
         {/* Info Banner */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-          <div className="flex items-start gap-3">
-            <span className="text-2xl">💡</span>
-            <div>
-              <h3 className="font-semibold text-blue-900 mb-1">How it works</h3>
-              <p className="text-sm text-blue-800">
-                Paste a LinkedIn post URL, select engagement types (likes, comments, etc.), 
-                and we'll extract all engaged users with their profile information. 
-                Download as CSV for outreach.
-              </p>
-            </div>
-          </div>
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
+          <h3 className="font-semibold text-blue-900 mb-2">How it works</h3>
+          <p className="text-sm text-blue-800">
+            Paste a LinkedIn post URL, select engagement types (likes, comments, etc.),
+            and we'll extract all engaged users with their complete profile information
+            as a CSV file for your outbound campaigns.
+          </p>
         </div>
 
-        {/* Active Scan Results */}
-        {activeScanId && (
-          <div className="mb-6">
-            <EngagerResults scanId={activeScanId} onNewScan={handleNewScan} />
-          </div>
-        )}
-
-        {/* Recent Scans */}
-        {completedScans.length > 0 && !activeScanId && (
-          <div>
-            <h2 className="text-xl font-bold mb-4">Recent Scans (Last Hour)</h2>
-            <div className="grid gap-4">
-              {completedScans.map((scan: any) => (
+        {/* Content */}
+        {selectedScanId ? (
+          <EngagerResults
+            scanId={selectedScanId}
+            onNewScan={handleNewScan}
+          />
+        ) : scans.length > 0 ? (
+          <div className="bg-white rounded-lg border">
+            <div className="p-6 border-b">
+              <h2 className="text-lg font-semibold">Recent Scans</h2>
+            </div>
+            <div className="divide-y">
+              {scans.map((scan: any) => (
                 <div
                   key={scan.scan_id}
-                  className="bg-white p-6 rounded-lg border border-gray-200 hover:shadow-md transition-shadow cursor-pointer"
-                  onClick={() => setActiveScanId(scan.scan_id)}
+                  className="p-6 hover:bg-gray-50 cursor-pointer transition"
+                  onClick={() => setSelectedScanId(scan.scan_id)}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <span className="px-3 py-1 bg-green-100 text-green-700 text-sm font-medium rounded-full">
-                          Completed
-                        </span>
-                        <span className="text-sm text-gray-500">
-                          {new Date(scan.timestamp).toLocaleString()}
-                        </span>
-                      </div>
-                      <p className="text-gray-600 text-sm mb-2 truncate">
+                      <p className="text-sm text-gray-600 mb-2 break-all">
                         {scan.post_url}
                       </p>
-                      <div className="flex gap-6 text-sm text-gray-600">
-                        <span>📊 {scan.total_engagers} engagers</span>
-                        <span>👤 {scan.unique_profiles} unique profiles</span>
+                      <div className="flex gap-4 text-sm">
+                        <span className="text-gray-500">
+                          {scan.total_engagers || 0} engagers
+                        </span>
+                        <span className="text-gray-500">
+                          {new Date(scan.created_at).toLocaleString()}
+                        </span>
+                        {scan.status === 'completed' && (
+                          <span className="text-green-600 font-medium">
+                            ✓ Complete
+                          </span>
+                        )}
+                        {scan.status === 'processing' && (
+                          <span className="text-blue-600 font-medium">
+                            ⏳ Processing...
+                          </span>
+                        )}
                       </div>
                     </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        window.open(
-                          `${process.env.NEXT_PUBLIC_API_BASE_URL}/engagers/scan/${scan.scan_id}/download`,
-                          '_blank'
-                        );
-                      }}
-                      className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm"
-                    >
-                      Download CSV
+                    <button className="text-blue-600 hover:text-blue-800">
+                      View →
                     </button>
                   </div>
                 </div>
               ))}
             </div>
           </div>
-        )}
-
-        {/* Empty State */}
-        {completedScans.length === 0 && !activeScanId && (
-          <div className="bg-white p-12 rounded-lg border text-center">
-            <div className="text-6xl mb-4">🎯</div>
-            <h3 className="text-xl font-bold mb-2">No scans yet</h3>
-            <p className="text-gray-600 mb-6">
-              Start your first scan to extract engaged prospects from LinkedIn posts
-            </p>
-            <button
-              onClick={handleNewScan}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              Start Your First Scan
-            </button>
+        ) : (
+          <div className="bg-white rounded-lg border p-12 text-center">
+            <div className="max-w-md mx-auto">
+              <div className="text-6xl mb-4">🎯</div>
+              <h3 className="text-xl font-semibold mb-2">No scans yet</h3>
+              <p className="text-gray-600 mb-6">
+                Start by creating your first scan to extract engaged prospects from LinkedIn posts
+              </p>
+              <button
+                onClick={handleNewScan}
+                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+              >
+                Start Your First Scan
+              </button>
+            </div>
           </div>
         )}
-      </div>
 
-      {/* Scan Modal */}
-      {showScanModal && (
-        <EngagerScanModal
-          onClose={() => setShowScanModal(false)}
-          onScanComplete={handleScanComplete}
-        />
-      )}
+        {/* Modal */}
+        {showModal && (
+          <EngagerScanModal
+            onClose={() => setShowModal(false)}
+            onScanComplete={handleScanComplete}
+          />
+        )}
+      </div>
     </div>
   );
 }
