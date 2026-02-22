@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { isAuthenticated } from '@/lib/auth';
-import Sidebar from '@/components/Sidebar';
+import AppLayout from '@/components/AppLayout';
 import Topbar from '@/components/Topbar';
 import SignalBadge from '@/components/SignalBadge';
 
@@ -100,10 +100,9 @@ export default function CampaignsPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Sidebar />
-
-      <div className="ml-64 p-8">
+    <AppLayout>
+      <div className="p-8">
+        <div className="max-w-7xl mx-auto">
         <Topbar title="Campaigns" />
 
         <button
@@ -168,6 +167,7 @@ export default function CampaignsPage() {
             ))}
           </div>
         )}
+        </div>
       </div>
 
       {/* Create Campaign Modal */}
@@ -253,6 +253,6 @@ export default function CampaignsPage() {
           </div>
         </div>
       )}
-    </div>
+    </AppLayout>
   );
 }

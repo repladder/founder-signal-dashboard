@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { isAuthenticated } from '@/lib/auth';
 import { fetchProfiles, fetchEvents } from '@/lib/api';
-import Sidebar from '@/components/Sidebar';
+import AppLayout from '@/components/AppLayout';
 import Topbar from '@/components/Topbar';
 import StatsCard from '@/components/StatsCard';
 import Link from 'next/link';
@@ -49,44 +49,44 @@ export default function DashboardPage() {
                   profilesData?.plan_limit === 1000 ? 'Basic' : 'Business';
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Sidebar />
-      
-      <div className="ml-64 p-8">
-        <Topbar title="Dashboard" plan={planName} />
+    <AppLayout>
+      <div className="p-8">
+        <div className="max-w-7xl mx-auto">
+          <Topbar title="Dashboard" plan={planName} />
 
-        {profilesLoading || eventsLoading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="spinner"></div>
-          </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              <StatsCard
-                label="Profiles Monitored"
-                value={`${profilesData?.count || 0} / ${profilesData?.plan_limit || 200}`}
-              />
-              <StatsCard
-                label="Signals (Last 7 Days)"
-                value={recentSignals.length}
-              />
-              <StatsCard
-                label="Current Plan"
-                value={planName}
-              />
+          {profilesLoading || eventsLoading ? (
+            <div className="flex justify-center items-center h-64">
+              <div className="spinner"></div>
             </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <StatsCard
+                  label="Profiles Monitored"
+                  value={`${profilesData?.count || 0} / ${profilesData?.plan_limit || 200}`}
+                />
+                <StatsCard
+                  label="Signals (Last 7 Days)"
+                  value={recentSignals.length}
+                />
+                <StatsCard
+                  label="Current Plan"
+                  value={planName}
+                />
+              </div>
 
-            {profilesData?.plan_limit === 200 && (
-              <Link
-                href="/billing"
-                className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Upgrade Plan
-              </Link>
-            )}
-          </>
-        )}
+              {profilesData?.plan_limit === 200 && (
+                <Link
+                  href="/billing"
+                  className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Upgrade Plan
+                </Link>
+              )}
+            </>
+          )}
+        </div>
       </div>
-    </div>
+    </AppLayout>
   );
 }

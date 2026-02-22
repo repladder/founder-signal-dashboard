@@ -14,10 +14,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       
       {/* Main Content Area */}
       <main className="flex-1 overflow-auto">
-        {/* Content wrapper with max-width and padding */}
-        <div className="w-full">
-          {children}
-        </div>
+        {children}
       </main>
     </div>
   );

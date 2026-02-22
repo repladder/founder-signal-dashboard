@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { isAuthenticated } from '@/lib/auth';
 import { fetchProfiles, addProfile, deleteProfile, testScan } from '@/lib/api';
 import { SIGNAL_TEMPLATES } from '@/types/index';
-import Sidebar from '@/components/Sidebar';
+import AppLayout from '@/components/AppLayout';
 import Topbar from '@/components/Topbar';
 
 export default function ProspectsPage() {
@@ -108,10 +108,9 @@ export default function ProspectsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Sidebar />
-      
-      <div className="ml-64 p-8">
+    <AppLayout>
+      <div className="p-8">
+        <div className="max-w-7xl mx-auto">
         <Topbar title="Prospects" />
 
         {/* Upload Section */}
@@ -310,7 +309,8 @@ export default function ProspectsPage() {
             </div>
           )}
         </div>
+        </div>
       </div>
-    </div>
+    </AppLayout>
   );
 }
