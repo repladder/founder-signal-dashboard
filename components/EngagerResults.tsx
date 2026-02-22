@@ -15,23 +15,20 @@ const safeString = (value: any): string => {
   if (typeof value === 'number') return String(value);
   if (typeof value === 'boolean') return value ? 'Yes' : 'No';
   if (typeof value === 'object') {
-    // If it's an object with a 'name' property, use that
     if ('name' in value && typeof value.name === 'string') return value.name;
-    // If it's an object with a 'title' property, use that
     if ('title' in value && typeof value.title === 'string') return value.title;
-    // Otherwise, stringify it
     return JSON.stringify(value);
   }
   return String(value);
 };
 
 export default function EngagerResults({ scanId, onNewScan }: EngagerResultsProps) {
-  const [filterReaction, setFilterReaction] = useState('all');
-  const [filterIndustry, setFilterIndustry] = useState('all');
-  const [filterEmployeeSize, setFilterEmployeeSize] = useState('all');
-  const [filterCompanyLocation, setFilterCompanyLocation] = useState('all');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [mounted, setMounted] = useState(false);
+  const [filterReaction, setFilterReaction] = useState<string>('all');
+  const [filterIndustry, setFilterIndustry] = useState<string>('all');
+  const [filterEmployeeSize, setFilterEmployeeSize] = useState<string>('all');
+  const [filterCompanyLocation, setFilterCompanyLocation] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [mounted, setMounted] = useState<boolean>(false);
 
   useEffect(() => {
     setMounted(true);
@@ -78,23 +75,23 @@ export default function EngagerResults({ scanId, onNewScan }: EngagerResultsProp
 
   const engagers = Array.isArray(resultsData.engagers) ? resultsData.engagers : [];
   
-  // Safe filter extraction - convert all to strings
-  const reactionTypes = Array.from(new Set(
+  // Safe filter extraction with explicit typing
+  const reactionTypes: string[] = Array.from(new Set<string>(
     engagers.flatMap((e: any) => {
       const reaction = safeString(e.reaction_type);
       return reaction.split(', ').filter(Boolean);
     })
   ));
   
-  const industries = Array.from(new Set(
+  const industries: string[] = Array.from(new Set<string>(
     engagers.map((e: any) => safeString(e.industry)).filter((v: string) => v !== '-')
   ));
   
-  const employeeSizes = Array.from(new Set(
+  const employeeSizes: string[] = Array.from(new Set<string>(
     engagers.map((e: any) => safeString(e.employee_size)).filter((v: string) => v !== '-')
   ));
 
-  const companyLocations = Array.from(new Set(
+  const companyLocations: string[] = Array.from(new Set<string>(
     engagers.map((e: any) => safeString(e.company_location)).filter((v: string) => v !== '-')
   ));
 
@@ -159,19 +156,19 @@ export default function EngagerResults({ scanId, onNewScan }: EngagerResultsProp
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <select value={filterReaction} onChange={(e) => setFilterReaction(e.target.value)} className="px-4 py-2 border rounded-lg">
             <option value="all">All Reactions</option>
-            {reactionTypes.map((r: string) => <option key={r} value={r}>{r}</option>)}
+            {reactionTypes.map((r) => <option key={r} value={r}>{r}</option>)}
           </select>
           <select value={filterIndustry} onChange={(e) => setFilterIndustry(e.target.value)} className="px-4 py-2 border rounded-lg">
             <option value="all">All Industries</option>
-            {industries.map((i: string) => <option key={i} value={i}>{i}</option>)}
+            {industries.map((i) => <option key={i} value={i}>{i}</option>)}
           </select>
           <select value={filterEmployeeSize} onChange={(e) => setFilterEmployeeSize(e.target.value)} className="px-4 py-2 border rounded-lg">
             <option value="all">All Sizes</option>
-            {employeeSizes.map((s: string) => <option key={s} value={s}>{s}</option>)}
+            {employeeSizes.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
           <select value={filterCompanyLocation} onChange={(e) => setFilterCompanyLocation(e.target.value)} className="px-4 py-2 border rounded-lg">
             <option value="all">All Locations</option>
-            {companyLocations.map((l: string) => <option key={l} value={l}>{l}</option>)}
+            {companyLocations.map((l) => <option key={l} value={l}>{l}</option>)}
           </select>
         </div>
         <p className="text-sm text-gray-500 mt-4">Showing {filteredEngagers.length} of {engagers.length}</p>
