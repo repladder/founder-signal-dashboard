@@ -54,10 +54,10 @@ export default function EngagersPage() {
 
   if (!isClient) {
     return (
-      <div className="flex h-screen bg-gray-50">
+      <div className="flex min-h-screen bg-gray-50">
         <Sidebar />
         <div className="flex-1 p-8">
-          <div className="max-w-6xl mx-auto">
+          <div className="max-w-7xl mx-auto">
             <div className="bg-white p-12 rounded-lg border text-center">
               <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
               <p className="text-gray-600">Loading...</p>
@@ -71,11 +71,11 @@ export default function EngagersPage() {
   const scans = scansData?.scans || [];
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
-      <div className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-auto">
         <div className="p-8">
-          <div className="max-w-6xl mx-auto">
+          <div className="max-w-7xl mx-auto">
             <div className="flex items-center justify-between mb-8">
               <div>
                 <h1 className="text-3xl font-bold mb-2">LinkedIn Post Engagers</h1>
@@ -163,7 +163,7 @@ export default function EngagersPage() {
             )}
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }
