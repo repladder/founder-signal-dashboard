@@ -87,15 +87,15 @@ export default function EngagerResults({ scanId, onNewScan }: EngagerResultsProp
   ));
   
   const industries = Array.from(new Set(
-    engagers.map((e: any) => safeString(e.industry)).filter(v => v !== '-')
+    engagers.map((e: any) => safeString(e.industry)).filter((v: string) => v !== '-')
   ));
   
   const employeeSizes = Array.from(new Set(
-    engagers.map((e: any) => safeString(e.employee_size)).filter(v => v !== '-')
+    engagers.map((e: any) => safeString(e.employee_size)).filter((v: string) => v !== '-')
   ));
 
   const companyLocations = Array.from(new Set(
-    engagers.map((e: any) => safeString(e.company_location)).filter(v => v !== '-')
+    engagers.map((e: any) => safeString(e.company_location)).filter((v: string) => v !== '-')
   ));
 
   const filteredEngagers = engagers.filter((engager: any) => {
@@ -159,19 +159,19 @@ export default function EngagerResults({ scanId, onNewScan }: EngagerResultsProp
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <select value={filterReaction} onChange={(e) => setFilterReaction(e.target.value)} className="px-4 py-2 border rounded-lg">
             <option value="all">All Reactions</option>
-            {reactionTypes.map((r) => <option key={r} value={r}>{r}</option>)}
+            {reactionTypes.map((r: string) => <option key={r} value={r}>{r}</option>)}
           </select>
           <select value={filterIndustry} onChange={(e) => setFilterIndustry(e.target.value)} className="px-4 py-2 border rounded-lg">
             <option value="all">All Industries</option>
-            {industries.map((i) => <option key={i} value={i}>{i}</option>)}
+            {industries.map((i: string) => <option key={i} value={i}>{i}</option>)}
           </select>
           <select value={filterEmployeeSize} onChange={(e) => setFilterEmployeeSize(e.target.value)} className="px-4 py-2 border rounded-lg">
             <option value="all">All Sizes</option>
-            {employeeSizes.map((s) => <option key={s} value={s}>{s}</option>)}
+            {employeeSizes.map((s: string) => <option key={s} value={s}>{s}</option>)}
           </select>
           <select value={filterCompanyLocation} onChange={(e) => setFilterCompanyLocation(e.target.value)} className="px-4 py-2 border rounded-lg">
             <option value="all">All Locations</option>
-            {companyLocations.map((l) => <option key={l} value={l}>{l}</option>)}
+            {companyLocations.map((l: string) => <option key={l} value={l}>{l}</option>)}
           </select>
         </div>
         <p className="text-sm text-gray-500 mt-4">Showing {filteredEngagers.length} of {engagers.length}</p>
