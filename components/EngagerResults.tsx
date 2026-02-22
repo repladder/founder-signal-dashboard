@@ -16,7 +16,6 @@ export default function EngagerResults({ scanId, onNewScan }: EngagerResultsProp
   const [searchTerm, setSearchTerm] = useState('');
   const [mounted, setMounted] = useState(false);
 
-  // Fix: Only render after mounting on client
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -38,7 +37,7 @@ export default function EngagerResults({ scanId, onNewScan }: EngagerResultsProp
       if (!res.ok) throw new Error('Failed to fetch results');
       return res.json();
     },
-    enabled: mounted // Only run after mount
+    enabled: mounted
   });
 
   if (!mounted || isLoading) {
@@ -60,7 +59,6 @@ export default function EngagerResults({ scanId, onNewScan }: EngagerResultsProp
 
   const engagers = resultsData.engagers || [];
   
-  // Get unique values for filters
   const reactionTypes = [...new Set(engagers.flatMap((e: any) => 
     e.reaction_type.split(', ')
   ))];
@@ -80,7 +78,6 @@ export default function EngagerResults({ scanId, onNewScan }: EngagerResultsProp
     .filter((l: string) => l)
   )];
 
-  // Filter engagers
   const filteredEngagers = engagers.filter((engager: any) => {
     const matchesReaction = filterReaction === 'all' || 
       engager.reaction_type.toLowerCase().includes(filterReaction.toLowerCase());
@@ -114,7 +111,6 @@ export default function EngagerResults({ scanId, onNewScan }: EngagerResultsProp
 
   return (
     <div className="space-y-6">
-      {/* Header with Stats */}
       <div className="bg-white p-6 rounded-lg border">
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
@@ -156,7 +152,6 @@ export default function EngagerResults({ scanId, onNewScan }: EngagerResultsProp
         </div>
       </div>
 
-      {/* ICP Filters */}
       <div className="bg-white p-6 rounded-lg border">
         <h3 className="font-semibold mb-4">🎯 Filter by ICP</h3>
         
@@ -179,8 +174,8 @@ export default function EngagerResults({ scanId, onNewScan }: EngagerResultsProp
               className="w-full px-4 py-2 border border-gray-300 rounded-lg"
             >
               <option value="all">All</option>
-              {reactionTypes.map((r) => (
-                <option key={r} value={r}>{r}</option>
+              {reactionTypes.map((r: any) => (
+                <option key={String(r)} value={String(r)}>{String(r)}</option>
               ))}
             </select>
           </div>
@@ -193,8 +188,8 @@ export default function EngagerResults({ scanId, onNewScan }: EngagerResultsProp
               className="w-full px-4 py-2 border border-gray-300 rounded-lg"
             >
               <option value="all">All</option>
-              {industries.map((i) => (
-                <option key={i} value={i}>{i}</option>
+              {industries.map((i: any) => (
+                <option key={String(i)} value={String(i)}>{String(i)}</option>
               ))}
             </select>
           </div>
@@ -207,8 +202,8 @@ export default function EngagerResults({ scanId, onNewScan }: EngagerResultsProp
               className="w-full px-4 py-2 border border-gray-300 rounded-lg"
             >
               <option value="all">All</option>
-              {employeeSizes.map((s) => (
-                <option key={s} value={s}>{s}</option>
+              {employeeSizes.map((s: any) => (
+                <option key={String(s)} value={String(s)}>{String(s)}</option>
               ))}
             </select>
           </div>
@@ -221,8 +216,8 @@ export default function EngagerResults({ scanId, onNewScan }: EngagerResultsProp
               className="w-full px-4 py-2 border border-gray-300 rounded-lg"
             >
               <option value="all">All</option>
-              {companyLocations.map((l) => (
-                <option key={l} value={l}>{l}</option>
+              {companyLocations.map((l: any) => (
+                <option key={String(l)} value={String(l)}>{String(l)}</option>
               ))}
             </select>
           </div>
@@ -233,7 +228,6 @@ export default function EngagerResults({ scanId, onNewScan }: EngagerResultsProp
         </p>
       </div>
 
-      {/* Results Table */}
       <div className="bg-white rounded-lg border overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
