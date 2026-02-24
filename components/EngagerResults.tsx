@@ -247,10 +247,10 @@ export default function EngagerResults({ scanId, onNewScan }: EngagerResultsProp
               {resultsData?.post_url || 'LinkedIn Post'}
             </p>
             <div className="flex gap-6 text-sm flex-wrap mb-4">
-              <span className="text-gray-700">📊 <strong>{resultsData?.total_engagers || 0}</strong> total</span>
-              <span className="text-gray-700">👤 <strong>{resultsData?.unique_profiles || 0}</strong> unique</span>
-              <span className="text-gray-700">✅ <strong>{resultsData?.profiles_enriched || 0}</strong> enriched</span>
-              <span className="text-gray-700">🏢 <strong>{resultsData?.companies_enriched || 0}</strong> companies</span>
+              <span className="text-gray-700">📊 <strong>{allEngagers.length}</strong> total</span>
+              <span className="text-gray-700">👤 <strong>{allEngagers.length}</strong> unique</span>
+              <span className="text-gray-700">✅ <strong>{allEngagers.length}</strong> enriched</span>
+              <span className="text-gray-700">🏢 <strong>{new Set(allEngagers.map((e: any) => e.company_name).filter(Boolean)).size}</strong> companies</span>
             </div>
             <div className="flex gap-3">
               <button 
