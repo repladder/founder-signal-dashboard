@@ -24,6 +24,23 @@ const safeString = (value: any): string => {
 export default function EngagerResults({ scanId, onNewScan }: EngagerResultsProps) {
   const [mounted, setMounted] = useState(false);
 
+  // Filter states
+  const [filterReactionTags, setFilterReactionTags] = useState<string[]>([]);
+  const [filterIndustryTags, setFilterIndustryTags] = useState<string[]>([]);
+  const [filterSizeTags, setFilterSizeTags] = useState<string[]>([]);
+  const [filterLocationTags, setFilterLocationTags] = useState<string[]>([]);
+  const [searchTerm, setSearchTerm] = useState<string>('');
+
+  // Tag input states
+  const [reactionInput, setReactionInput] = useState<string>('');
+  const [industryInput, setIndustryInput] = useState<string>('');
+  const [sizeInput, setSizeInput] = useState<string>('');
+  const [locationInput, setLocationInput] = useState<string>('');
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [itemsPerPage] = useState<number>(50);
+
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -158,7 +175,60 @@ export default function EngagerResults({ scanId, onNewScan }: EngagerResultsProp
     );
   }
 
-  const engagers = Array.isArray(resultsData?.engagers) ? resultsData.engagers : [];
+  const allEngagers = Array.isArray(resultsData?.engagers) ? resultsData.engagers : [];
+
+  // Apply filters
+  const filteredEngagers = allEngagers.filter((engager: any) => {
+    const reactionStr = safeString(engager.reaction_type).toLowerCase();
+    const industryStr = safeString(engager.industry).toLowerCase();
+    const sizeStr = safeString(engager.employee_size).toLowerCase();
+    const locationStr = safeString(engager.company_location).toLowerCase();
+
+    const matchesReaction = filterReactionTags.length === 0 ||
+      filterReactionTags.some(tag => reactionStr.includes(tag.toLowerCase()));
+
+    const matchesIndustry = filterIndustryTags.length === 0 ||
+      filterIndustryTags.some(tag => industryStr.includes(tag.toLowerCase()));
+
+    const matchesSize = filterSizeTags.length === 0 ||
+      filterSizeTags.some(tag => sizeStr.includes(tag.toLowerCase()));
+
+    const matchesLocation = filterLocationTags.length === 0 ||
+      filterLocationTags.some(tag => locationStr.includes(tag.toLowerCase()));
+
+    const search = searchTerm.toLowerCase();
+    const matchesSearch = !search ||
+      safeString(engager.name).toLowerCase().includes(search) ||
+      safeString(engager.job_title).toLowerCase().includes(search) ||
+      safeString(engager.company_name).toLowerCase().includes(search);
+
+    return matchesReaction && matchesIndustry && matchesSize && matchesLocation && matchesSearch;
+  });
+
+  // Pagination
+  const totalPages = Math.ceil(filteredEngagers.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedEngagers = filteredEngagers.slice(startIndex, startIndex + itemsPerPage);
+
+  // Tag handler functions
+  const addTag = (value: string, setter: React.Dispatch<React.SetStateAction<string[]>>, inputSetter: React.Dispatch<React.SetStateAction<string>>) => {
+    const trimmed = value.trim();
+    if (trimmed) {
+      setter(prev => [...prev, trimmed]);
+      inputSetter('');
+    }
+  };
+
+  const removeTag = (index: number, setter: React.Dispatch<React.SetStateAction<string[]>>) => {
+    setter(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent, value: string, setter: React.Dispatch<React.SetStateAction<string[]>>, inputSetter: React.Dispatch<React.SetStateAction<string>>) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      addTag(value, setter, inputSetter);
+    }
+  };
 
   const handleDownload = () => {
     const apiKey = localStorage.getItem('api_key');
@@ -200,6 +270,113 @@ export default function EngagerResults({ scanId, onNewScan }: EngagerResultsProp
         </div>
       </div>
 
+      {/* ICP Filters */}
+      <div className="bg-white p-6 rounded-lg border">
+        <h3 className="font-semibold mb-4">🎯 Filter by ICP</h3>
+
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder="Search names, titles, companies..."
+          className="w-full px-4 py-2 border rounded-lg mb-4"
+        />
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Reaction Type Filter */}
+          <div>
+            <label className="block text-sm font-medium mb-2">Reaction Type</label>
+            <div className="border rounded-lg p-2 min-h-[44px] flex flex-wrap gap-2 items-center">
+              {filterReactionTags.map((tag, i) => (
+                <span key={i} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm flex items-center gap-1">
+                  {tag}
+                  <button onClick={() => removeTag(i, setFilterReactionTags)} className="hover:text-blue-600">×</button>
+                </span>
+              ))}
+              <input
+                type="text"
+                value={reactionInput}
+                onChange={(e) => setReactionInput(e.target.value)}
+                onKeyDown={(e) => handleKeyDown(e, reactionInput, setFilterReactionTags, setReactionInput)}
+                onBlur={() => reactionInput && addTag(reactionInput, setFilterReactionTags, setReactionInput)}
+                placeholder="Type and press Enter..."
+                className="flex-1 min-w-[150px] outline-none text-sm"
+              />
+            </div>
+          </div>
+
+          {/* Industry Filter */}
+          <div>
+            <label className="block text-sm font-medium mb-2">Industry</label>
+            <div className="border rounded-lg p-2 min-h-[44px] flex flex-wrap gap-2 items-center">
+              {filterIndustryTags.map((tag, i) => (
+                <span key={i} className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm flex items-center gap-1">
+                  {tag}
+                  <button onClick={() => removeTag(i, setFilterIndustryTags)} className="hover:text-purple-600">×</button>
+                </span>
+              ))}
+              <input
+                type="text"
+                value={industryInput}
+                onChange={(e) => setIndustryInput(e.target.value)}
+                onKeyDown={(e) => handleKeyDown(e, industryInput, setFilterIndustryTags, setIndustryInput)}
+                onBlur={() => industryInput && addTag(industryInput, setFilterIndustryTags, setIndustryInput)}
+                placeholder="Type and press Enter..."
+                className="flex-1 min-w-[150px] outline-none text-sm"
+              />
+            </div>
+          </div>
+
+          {/* Company Size Filter */}
+          <div>
+            <label className="block text-sm font-medium mb-2">Company Size</label>
+            <div className="border rounded-lg p-2 min-h-[44px] flex flex-wrap gap-2 items-center">
+              {filterSizeTags.map((tag, i) => (
+                <span key={i} className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm flex items-center gap-1">
+                  {tag}
+                  <button onClick={() => removeTag(i, setFilterSizeTags)} className="hover:text-green-600">×</button>
+                </span>
+              ))}
+              <input
+                type="text"
+                value={sizeInput}
+                onChange={(e) => setSizeInput(e.target.value)}
+                onKeyDown={(e) => handleKeyDown(e, sizeInput, setFilterSizeTags, setSizeInput)}
+                onBlur={() => sizeInput && addTag(sizeInput, setFilterSizeTags, setSizeInput)}
+                placeholder="Type and press Enter..."
+                className="flex-1 min-w-[150px] outline-none text-sm"
+              />
+            </div>
+          </div>
+
+          {/* Location Filter */}
+          <div>
+            <label className="block text-sm font-medium mb-2">Location</label>
+            <div className="border rounded-lg p-2 min-h-[44px] flex flex-wrap gap-2 items-center">
+              {filterLocationTags.map((tag, i) => (
+                <span key={i} className="px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-sm flex items-center gap-1">
+                  {tag}
+                  <button onClick={() => removeTag(i, setFilterLocationTags)} className="hover:text-orange-600">×</button>
+                </span>
+              ))}
+              <input
+                type="text"
+                value={locationInput}
+                onChange={(e) => setLocationInput(e.target.value)}
+                onKeyDown={(e) => handleKeyDown(e, locationInput, setFilterLocationTags, setLocationInput)}
+                onBlur={() => locationInput && addTag(locationInput, setFilterLocationTags, setLocationInput)}
+                placeholder="Type and press Enter..."
+                className="flex-1 min-w-[150px] outline-none text-sm"
+              />
+            </div>
+          </div>
+        </div>
+
+        <p className="text-sm text-gray-500 mt-4">
+          Showing {paginatedEngagers.length} of {filteredEngagers.length} results
+        </p>
+      </div>
+
       {/* Results Table */}
       <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
@@ -217,14 +394,14 @@ export default function EngagerResults({ scanId, onNewScan }: EngagerResultsProp
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {engagers.length === 0 ? (
+              {paginatedEngagers.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
                     No engagers found
                   </td>
                 </tr>
               ) : (
-                engagers.map((e: any, i: number) => (
+                paginatedEngagers.map((e: any, i: number) => (
                   <tr key={`engager-${i}`} className="hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-3 font-medium text-gray-900">{safeString(e.name)}</td>
                     <td className="px-4 py-3 text-gray-600">{safeString(e.job_title)}</td>
@@ -271,6 +448,50 @@ export default function EngagerResults({ scanId, onNewScan }: EngagerResultsProp
           </table>
         </div>
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="bg-white p-4 rounded-lg border flex items-center justify-between">
+          <button
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            className="px-4 py-2 border rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            ← Previous
+          </button>
+
+          <div className="flex gap-2">
+            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+              let pageNum = i + 1;
+              if (totalPages > 5) {
+                if (currentPage <= 3) pageNum = i + 1;
+                else if (currentPage >= totalPages - 2) pageNum = totalPages - 4 + i;
+                else pageNum = currentPage - 2 + i;
+              }
+
+              return (
+                <button
+                  key={pageNum}
+                  onClick={() => setCurrentPage(pageNum)}
+                  className={`px-4 py-2 border rounded-lg ${
+                    currentPage === pageNum ? 'bg-blue-600 text-white' : 'hover:bg-gray-50'
+                  }`}
+                >
+                  {pageNum}
+                </button>
+              );
+            })}
+          </div>
+
+          <button
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+            className="px-4 py-2 border rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Next →
+          </button>
+        </div>
+      )}
     </div>
   );
 }
